@@ -1,0 +1,168 @@
+Wireframe Layout
+Header
+-------------------------------------------------------
+| [Logo] AI Cost Optimizer                            |
+| See how much you spend on AI models and optimize it|
+-------------------------------------------------------
+
+
+Main Section: Split into Two Columns (Desktop)
+Left: Inputs
+Right: Outputs
+
+Left Column – Inputs
+[Select AI Model]  ▼ GPT-4, GPT-3.5, Claude
+[Input Tokens per Request]  500
+[Output Tokens per Request] 1500
+[Requests per Day]  100
+[Days per Month]  30
+[Budget Limit]  $2000
+[Advanced Options]  ☐ (toggle)
+Advanced Options expands to show: multi-model usage, summarization toggle, quality slider
+
+
+Right Column – Outputs
+[Cost Summary Card]
+--------------------------------------
+Total Monthly Cost: $2250
+GPT-4: $2250 (Input: $500, Output: $1750)
+GPT-3.5: $0
+
+[Savings Opportunities Card]
+--------------------------------------
+- Switch 50% of GPT-4 tasks to GPT-3.5 → Save $900/month
+- Reduce average output tokens from 1500 → 1000 → Save $300/month
+
+[Comparison Chart]
+--------------------------------------
+| Model    | Cost | Input Tokens | Output Tokens |
+| GPT-4    | $2250| 500          | 1750          |
+| GPT-3.5  | $0   | 500          | 1500          |
+
+[Estimated Savings Highlight]
+--------------------------------------
+💰 Potential Monthly Savings: $1200
+
+[Apply Recommendations Button]  [Download CSV]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Scenario 1: Developer building a chatbot
+
+User Input:
+
+Model: GPT-4
+Input tokens per request: 500
+Output tokens per response: 1500
+Requests per day: 100
+
+App Output:
+
+Monthly Cost (Current Setup): $2250
+Suggested Optimization:
+- Use GPT-3.5 for queries < 300 tokens → save 25%
+- Limit output length to 1000 tokens → additional 15% saving
+- Optimized Monthly Cost: $1350
+Estimated Savings: $900 (40%)
+
+Benefit: Developer sees tangible cost savings and actionable steps.
+
+Scenario 2: Startup evaluating multiple AI models
+
+User Input:
+
+Model options: GPT-4, Claude, GPT-3.5
+Input tokens per request: 200
+Output tokens per response: 400
+Requests per day: 500
+
+App Output:
+
+Cost Comparison:
+- GPT-4: $800/month
+- Claude: $620/month → Cheapest option
+- GPT-3.5: $450/month → Good for small tasks
+Recommendation:
+- Use GPT-3.5 for simple tasks
+- Use Claude for moderate tasks
+- Use GPT-4 for complex tasks only
+Estimated Monthly Savings: $180-$350
+
+Benefit: Helps them make model choice decisions efficiently.
+
+Scenario 3: SaaS founder checking hidden costs
+
+User Input:
+
+Current AI setup: GPT-4
+Avg input tokens: 1000
+Avg output tokens: 3000
+Daily usage: 200 requests
+
+App Output:
+
+Analysis:
+- Input tokens cost: $400/month
+- Output tokens cost: $1200/month → 75% of total spend
+- Hidden cost identified: Output is unnecessarily large
+Actionable Tip:
+- Limit responses to 1500 tokens for standard queries
+- Summarize long outputs automatically
+- Potential Savings: $600/month
+
+Benefit: Exposes the “silent cost” of output-heavy queries that most users ignore.
+
+Scenario 4: Marketing agency testing large AI generation
+
+User Input:
+
+Model: GPT-4
+Input: 10000 tokens per day
+Output: 50000 tokens per day
+Plan: Monthly subscription
+
+App Output:
+
+Current Monthly Cost: $3500
+Optimization Suggestions:
+- Use GPT-3.5 for bulk content generation → save $1200
+- For highly creative outputs, keep GPT-4 for max 20% of requests
+Optimized Monthly Cost: $2300
+Estimated Savings: $1200 (34%)
+
+Benefit: Helps agencies control runaway AI costs for high-volume workloads.
+
+Scenario 5: User wants ROI-based recommendations
+
+User Input:
+
+Model usage data from past month:
+GPT-4 requests: 2000
+GPT-3.5 requests: 5000
+Input/output token counts included
+
+App Output:
+
+Monthly Summary:
+- Total AI Spend: $4200
+- GPT-4 Cost: $2800 → Use selectively
+- GPT-3.5 Cost: $1400 → Cost-efficient alternative
+Recommendation:
+- Switch 60% of GPT-4 requests to GPT-3.5
+- Limit output tokens for low-priority requests
+Optimized Spend: $2800
+Potential Savings: $1400
+
+Benefit: User sees cost by model, actionable plan to reduce, and a direct ROI.
