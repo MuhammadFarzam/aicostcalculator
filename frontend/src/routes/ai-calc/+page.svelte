@@ -17,6 +17,7 @@
     Scenario4Response,
   } from "./components/scenario-types";
 
+  let activeTopTab = $state<"cost" | "token">("cost");
   let activeScenario = $state<1 | 2 | 3 | 4>(1);
   let loading = $state(false);
   let error = $state<string | null>(null);
@@ -78,6 +79,93 @@
   let resp2 = $state<Scenario2Response | null>(null);
   let resp3 = $state<Scenario3Response | null>(null);
   let resp4 = $state<Scenario4Response | null>(null);
+
+  // Tokenization tool state
+  let tk_text = $state("");
+  let tk_model = $state("gpt-4o");
+  /** API TokenizeRequest.mode: decoded text, numeric ids, or both */
+  let tk_mode = $state<"text" | "ids" | "both">("both");
+  let tk_loading = $state(false);
+  let tk_error = $state<string | null>(null);
+  let tk_result = $state<{
+    token_count: number;
+    char_count: number;
+    tokens: { text?: string | null; token_id?: number | null; color?: string | null }[];
+  } | null>(null);
+
+  /** Invalidate in-flight tokenize calls when newer input arrives */
+  let tokenizeSeq = 0;
+  const TOKENIZE_DEBOUNCE_MS = 380;
+
+  async function runTokenize() {
+    const text = tk_text.trim();
+    if (!text) {
+      tk_result = null;
+      tk_error = null;
+      tk_loading = false;
+      return;
+    }
+
+    const seq = ++tokenizeSeq;
+    tk_loading = true;
+    tk_error = null;
+
+    try {
+      const res = await fetch("/api/tokenize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: tk_text,
+          model: tk_model,
+          mode: tk_mode,
+          include_colors: true,
+        }),
+      });
+      if (!res.ok) throw new Error(`Tokenize failed (${res.status})`);
+      const data = await res.json();
+      if (seq !== tokenizeSeq) return;
+      tk_result = data;
+    } catch (e) {
+      console.error(e);
+      if (seq !== tokenizeSeq) return;
+      tk_error = "Could not tokenize text. Please try again.";
+    } finally {
+      if (seq === tokenizeSeq) tk_loading = false;
+    }
+  }
+
+  $effect(() => {
+    if (activeTopTab !== "token") return;
+
+    const text = tk_text;
+
+    if (!text.trim()) {
+      tokenizeSeq++;
+      tk_result = null;
+      tk_error = null;
+      tk_loading = false;
+      return;
+    }
+
+    void tk_model;
+    void tk_mode;
+
+    const t = setTimeout(() => {
+      void runTokenize();
+    }, TOKENIZE_DEBOUNCE_MS);
+
+    return () => clearTimeout(t);
+  });
+
+  function resetTokenization() {
+    tokenizeSeq++;
+    tk_text = "";
+    tk_model = "gpt-4o";
+    tk_mode = "both";
+    tk_result = null;
+    tk_error = null;
+    tk_loading = false;
+  }
 
   async function postJSON<T>(url: string, payload: unknown): Promise<T> {
     const res = await fetch(url, {
@@ -165,6 +253,26 @@
     </div>
   </header>
 
+  <div class="top-nav">
+    <button
+      type="button"
+      class="top-nav-tab"
+      class:active={activeTopTab === "cost"}
+      on:click={() => (activeTopTab = "cost")}
+    >
+      1. Cost Calculator
+    </button>
+    <button
+      type="button"
+      class="top-nav-tab"
+      class:active={activeTopTab === "token"}
+      on:click={() => (activeTopTab = "token")}
+    >
+      2. Tokenization
+    </button>
+  </div>
+
+  {#if activeTopTab === "cost"}
   <main class="main">
     <section class="card inputs">
       <h2>Choose a scenario</h2>
@@ -246,4 +354,179 @@
       s4={resp4}
     />
   </main>
+  {:else}
+  <main class="main token-main">
+    <section class="card inputs token-input-panel">
+      <h2>Tokenization</h2>
+      <p class="token-live-hint">
+        <span class="token-live-dot" aria-hidden="true"></span>
+        Live — results update shortly after you pause typing
+      </p>
+      <div class="field">
+        <label for="tokenModel">Tokenizer model</label>
+        <select id="tokenModel" bind:value={tk_model}>
+          <option value="gpt-4o">gpt-4o</option>
+          <option value="gpt-4">gpt-4</option>
+          <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label id="tokenModeLabel" class="token-mode-field-label">Output mode</label>
+        <div
+          class="token-mode-toggle"
+          role="group"
+          aria-labelledby="tokenModeLabel"
+        >
+          <button
+            type="button"
+            class="token-mode-btn"
+            class:active={tk_mode === "text"}
+            aria-pressed={tk_mode === "text"}
+            on:click={() => (tk_mode = "text")}
+          >
+            Text
+          </button>
+          <button
+            type="button"
+            class="token-mode-btn"
+            class:active={tk_mode === "ids"}
+            aria-pressed={tk_mode === "ids"}
+            on:click={() => (tk_mode = "ids")}
+          >
+            Token IDs
+          </button>
+          <button
+            type="button"
+            class="token-mode-btn"
+            class:active={tk_mode === "both"}
+            aria-pressed={tk_mode === "both"}
+            on:click={() => (tk_mode = "both")}
+          >
+            Both
+          </button>
+        </div>
+        <p class="field-hint token-mode-hint">
+          {#if tk_mode === "text"}
+            Chips show decoded token pieces only (matches <code>mode: "text"</code>).
+          {:else if tk_mode === "ids"}
+            Chips show numeric token IDs only (<code>mode: "ids"</code>).
+          {:else}
+            Chips show text; hover for ID (<code>mode: "both"</code>).
+          {/if}
+        </p>
+      </div>
+
+      <div class="field">
+        <label for="tokenText">Text</label>
+        <textarea
+          id="tokenText"
+          class="token-textarea"
+          rows="12"
+          bind:value={tk_text}
+          placeholder="Type or paste text — token count updates automatically…"
+        />
+      </div>
+
+      <button
+        type="button"
+        class="secondary-button token-refresh-btn"
+        on:click|preventDefault={() => runTokenize()}
+      >
+        Refresh now
+      </button>
+      <button
+        type="button"
+        class="secondary-button token-reset-btn"
+        on:click|preventDefault={resetTokenization}
+      >
+        Reset
+      </button>
+    </section>
+
+    <section class="outputs token-outputs">
+      <div class="card token-result-card">
+        <div class="token-result-header">
+          <h2 class="token-result-title">Token count</h2>
+          {#if tk_loading && tk_text.trim()}
+            <span class="token-updating-pill" aria-live="polite">Updating…</span>
+          {/if}
+        </div>
+
+        {#if tk_error}
+          <p class="error-text token-error-large">{tk_error}</p>
+        {:else if !tk_text.trim()}
+          <p class="token-empty-hint">
+            Start typing on the left — your <strong>token total</strong> and <strong>token breakdown</strong> show
+            here.
+          </p>
+        {:else if tk_result}
+          <div class="token-hero">
+            <div class="token-hero-primary">
+              <span class="token-hero-label">Tokens</span>
+              <span class="token-hero-value">
+                {tk_result.token_count.toLocaleString()}
+              </span>
+            </div>
+            <div class="token-hero-secondary">
+              <span class="token-hero-label">Characters</span>
+              <span class="token-hero-value-sub">
+                {tk_result.char_count.toLocaleString()}
+              </span>
+            </div>
+          </div>
+
+          <div class="token-model-tag">
+            Model: <strong>{tk_model}</strong>
+            · Mode:
+            <strong>{tk_mode}</strong>
+            {#if tk_loading}
+              <span class="token-pulse" aria-hidden="true">●</span>
+            {/if}
+          </div>
+
+          <div class="token-breakdown-wrap">
+            <h3 class="token-breakdown-heading">Token breakdown</h3>
+            <p class="token-breakdown-sub">
+              {#if tk_mode === "text"}
+                Decoded subword pieces from the API.
+              {:else if tk_mode === "ids"}
+                Numeric token IDs from the API (one chip per token).
+              {:else}
+                Decoded text and ID per token.
+              {/if}
+            </p>
+            <div class="token-chip-row token-chip-row-prominent">
+              {#each tk_result.tokens as t}
+                <span
+                  class="token-chip token-chip-lg"
+                  class:token-chip-id={tk_mode === "ids"}
+                  style={t.color ? `background-color: ${t.color}28; border-color: ${t.color}70;` : ""}
+                  title={tk_mode === "both" && t.token_id != null
+                    ? `ID: ${t.token_id}`
+                    : tk_mode === "ids" && t.token_id != null
+                      ? `Token ID ${t.token_id}`
+                      : undefined}
+                >
+                  {#if tk_mode === "ids"}
+                    {t.token_id ?? "—"}
+                  {:else if tk_mode === "both"}
+                    {t.text ?? ""}{" "}
+                    <span class="token-id-inline">
+                      ({t.token_id ?? "—"})
+                    </span>
+                  {:else}
+                    {t.text ?? ""}
+                  {/if}
+                </span>
+              {/each}
+            </div>
+          </div>
+        {:else}
+          <p class="placeholder-text">Preparing…</p>
+        {/if}
+      </div>
+    </section>
+  </main>
+  {/if}
 </div>

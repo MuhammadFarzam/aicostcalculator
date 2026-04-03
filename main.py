@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-
-
+from typing import List, Optional, Literal
+import tiktoken
 class CostRequest(BaseModel):
     model: str = Field(..., description="Model id, e.g. gpt-4, gpt-3.5, claude")
     input_tokens_per_request: int = Field(..., ge=0)
@@ -151,6 +151,37 @@ class Scenario5Request(BaseModel):
     cost_budget: float = Field(..., ge=0)
 
 
+class TokenizeRequest(BaseModel):
+    text: str = Field(..., min_length=1, description="Input text to tokenize")
+    model: str = Field(
+        default="gpt-4o",
+        description="Model name (gpt-4o, gpt-4, gpt-3.5)",
+    )
+    mode: Literal["text", "ids", "both"] = Field(
+        default="both",
+        description="Return decoded tokens, token IDs, or both",
+    )
+    include_colors: bool = Field(
+        default=True,
+        description="Include color mapping for UI",
+    )
+
+# -----------------------------
+# Response Model
+# -----------------------------
+class TokenItem(BaseModel):
+    text: Optional[str] = None
+    token_id: Optional[int] = None
+    color: Optional[str] = None
+
+
+class TokenizeResponse(BaseModel):
+    token_count: int
+    char_count: int
+    tokens: List[TokenItem]
+
+
+
 app = FastAPI(title="AI Cost Optimizer API")
 
 app.add_middleware(
@@ -165,6 +196,50 @@ app.add_middleware(
 @app.get("/api/health")
 def health_check() -> dict:
     return {"status": "ok"}
+
+
+@app.post("/api/tokenize", response_model=TokenizeResponse)
+def tokenize_text(payload: TokenizeRequest) -> TokenizeResponse:
+    """
+    Simple tokenization endpoint for UI.
+    Uses tiktoken to approximate tokenization for the selected model.
+    """
+    try:
+        enc = tiktoken.encoding_for_model(payload.model)
+    except Exception:
+        # Fallback to a generic encoding if model-specific not available
+        enc = tiktoken.get_encoding("cl100k_base")
+
+    ids = enc.encode(payload.text)
+    decoded = enc.decode_tokens_bytes(ids)
+
+    colors_palette = [
+        "#22c55e",
+        "#0ea5e9",
+        "#a855f7",
+        "#f97316",
+        "#eab308",
+        "#ec4899",
+    ]
+
+    tokens: List[TokenItem] = []
+    for idx, (raw, tok_id) in enumerate(zip(decoded, ids)):
+        text = raw.decode("utf-8", errors="ignore")
+        color = None
+        if payload.include_colors:
+            color = colors_palette[idx % len(colors_palette)]
+        item = TokenItem(
+            text=text if payload.mode in ("text", "both") else None,
+            token_id=tok_id if payload.mode in ("ids", "both") else None,
+            color=color,
+        )
+        tokens.append(item)
+
+    return TokenizeResponse(
+        token_count=len(ids),
+        char_count=len(payload.text),
+        tokens=tokens,
+    )
 
 
 @app.post("/api/calculate", response_model=CostResponse)
@@ -499,3 +574,5 @@ def scenario4_roi(payload: Scenario4Request) -> Scenario4Response:
             "profit": round(sim_profit, 2),
         },
     )
+
+
